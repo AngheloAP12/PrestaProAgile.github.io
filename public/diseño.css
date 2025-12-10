@@ -2114,6 +2114,32 @@ small {
     }
 }
 
+/* === ESTILOS ADICIONALES PARA COMPROBANTES (FACTURA Y BOLETA) === */
+
+/* Resetear algunos estilos del modal para los comprobantes */
+#receiptModal .receipt-container table {
+    color: #000;
+    background: white;
+}
+
+#receiptModal .receipt-container th,
+#receiptModal .receipt-container td {
+    color: #000;
+    border-color: #000;
+}
+
+/* Asegurar que el texto sea negro en modo oscuro */
+[data-theme="dark"] #receiptModal .receipt-container,
+[data-theme="dark"] #receiptModal .receipt-container * {
+    color: #000 !important;
+    background: white !important;
+}
+
+[data-theme="dark"] #receiptModal .receipt-container table th,
+[data-theme="dark"] #receiptModal .receipt-container table td {
+    border-color: #000 !important;
+}
+
 #navigation-bar {
     /* Claves de alineación */
     display: flex;

@@ -1637,12 +1637,28 @@ async function handlePaymentSubmit(e) {
 // --- LÓGICA DE PAGOS RÁPIDOS (CHECKOUT) ---
 function initQuickPaymentListeners() {
     const searchDniInput = getDomElement('search-dni-pago');
+    const searchDocTypePago = getDomElement('search-doc-type-pago');
     const quickPaymentTableBody = getDomElement('quickPaymentTableBody');
     const confirmQuickPaymentBtn = getDomElement('confirmQuickPaymentBtn');
     const paymentSelectionType = getDomElement('payment_selection_type');
     const numInstallmentsInput = getDomElement('num_installments_to_pay');
 
     searchDniInput?.addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^0-9]/g, ''); });
+
+    // Listener para cambio de tipo de documento
+    searchDocTypePago?.addEventListener('change', () => {
+        const type = searchDocTypePago.value;
+        searchDniInput.value = '';
+        getDomElement('search-dni-status').textContent = '';
+        
+        if (type === 'DNI') {
+            searchDniInput.maxLength = 8;
+            searchDniInput.placeholder = 'Ingresa 8 dígitos y presiona Enter';
+        } else {
+            searchDniInput.maxLength = 11;
+            searchDniInput.placeholder = 'Ingresa 11 dígitos y presiona Enter';
+        }
+    });
 
     // CRÍTICO: Listener de búsqueda DNI (tecla Enter)
     searchDniInput?.addEventListener('keydown', (event) => {
@@ -1704,25 +1720,27 @@ function initQuickPaymentListeners() {
     });
 }
 
-async function searchLoansByDni(dni) {
+async function searchLoansByDni(docId) {
     const statusEl = getDomElement('search-dni-status');
     const quickPaymentTableBody = getDomElement('quickPaymentTableBody');
     const quickPaymentResultSection = getDomElement('quick-payment-result-section');
+    const docType = getDomElement('search-doc-type-pago')?.value || 'DNI';
+    
     quickPaymentTableBody.innerHTML = '';
 
-    // 🚨 NOTA: Esta función sigue siendo solo por DNI (8 dígitos) para el módulo de pagos,
-    // ya que el campo de entrada en el HTML de pagos está diseñado solo para 8 dígitos.
-    if (dni.length !== 8) {
-        statusEl.textContent = 'Ingresa 8 dígitos de DNI.';
+    // Validar longitud según tipo
+    const expectedLength = docType === 'DNI' ? 8 : 11;
+    if (docId.length !== expectedLength) {
+        statusEl.textContent = `Ingresa ${expectedLength} dígitos de ${docType}.`;
         statusEl.style.color = 'var(--danger-color)';
         quickPaymentResultSection.style.display = 'none';
         return;
     }
 
-    const foundLoans = loans.filter(loan => loan.dni === dni && loan.status === 'Activo');
+    const foundLoans = loans.filter(loan => loan.dni === docId && loan.status === 'Activo');
 
     if (foundLoans.length === 0) {
-        statusEl.textContent = '❌ No se encontraron préstamos activos para este DNI.';
+        statusEl.textContent = `❌ No se encontraron préstamos activos para este ${docType}.`;
         statusEl.style.color = 'var(--danger-color)';
         quickPaymentResultSection.style.display = 'none';
         quickPaymentTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #9CA3AF;">No se encontraron préstamos activos.</td></tr>';

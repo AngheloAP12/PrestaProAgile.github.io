@@ -2151,3 +2151,21 @@ small {
     background-color: var(--bg-primary); /* Fondo del tema actual */
     border-bottom: 1px solid var(--border-color); /* Línea sutil de separación */
 }
+
+/* Ajustes específicos para que los nuevos formatos de Boleta/Factura se vean perfectos al imprimir */
+@media print {
+    .receipt-container {
+        /* Fuerza los bordes y colores exactos al imprimir */
+        -webkit-print-color-adjust: exact !important; 
+        print-color-adjust: exact !important;
+        background-color: white !important;
+        color: black !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+    }
+    
+    /* Para que el logo de la boleta con fondo negro salga bien */
+    .receipt-container img {
+        max-width: 100% !important;
+    }
+}

@@ -2330,7 +2330,8 @@ function generateQrDataURL(text, size) {
     return '';
 }
 
-// MODIFICADA: Implementa los formatos de FACTURA y BOLETA según las imágenes
+// --- REEMPLAZA TODA LA FUNCIÓN showReceipt POR ESTA ---
+
 function showReceipt(payment, loan) {
     if (!payment || !loan) {
         alert('No se pudieron obtener los datos completos del pago para generar el recibo.');
@@ -2349,279 +2350,221 @@ function showReceipt(payment, loan) {
     const correlativo = payment.correlativo_boleta || (Math.floor(Math.random() * 999999) + 1);
 
     const paymentDate = new Date(payment.payment_date).toLocaleDateString('es-PE', { timeZone: 'UTC' });
+    // Hora simulada ya que la fecha viene sin hora del input date
+    const horaSimulada = new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-    // 🚨 NUEVO: Determinar si es FACTURA (RUC) o BOLETA (DNI)
-    const esFactura = loan.dni && loan.dni.length === 11; // RUC tiene 11 dígitos
-    const tipoComprobante = esFactura ? 'FACTURA' : 'BOLETA DE VENTA';
-    const serieComprobante = esFactura ? 'F001' : 'B001';
+    // Determinar si es FACTURA (RUC 11 dígitos) o BOLETA
+    const esFactura = loan.dni && loan.dni.length === 11;
+    const tipoComprobante = esFactura ? 'FACTURA ELECTRÓNICA' : 'BOLETA DE VENTA ELECTRÓNICA';
+    const serieComprobante = esFactura ? 'E001' : 'B002'; // Series usadas en tus ejemplos
 
-    // Generar QR
-    const qrText = `|${RUC_EMPRESA}|${esFactura ? '01' : '03'}|${serieComprobante}|${correlativo.toString().padStart(8, '0')}|${totalPagado.toFixed(2)}|0.00|${paymentDate}|1|${loan.dni}|`;
+    // Generar QR (Simulación)
+    const qrText = `|${RUC_EMPRESA}|${esFactura ? '01' : '03'}|${serieComprobante}|${correlativo}|${totalPagado.toFixed(2)}|${paymentDate}|${loan.dni}|`;
     const qrDataUrl = generateQrDataURL(qrText, 100);
 
-    // 🚨 NUEVO: HTML según el formato de las imágenes
+    // =========================================================
+    // DISEÑO 1: FACTURA (Estilo "Noticiero Contable" - Ancho completo)
+    // =========================================================
     if (esFactura) {
-        // ===== FORMATO DE FACTURA (Imagen 1) =====
         receiptContent.innerHTML = `
-            <div class="receipt-container" style="max-width: 700px; margin: 0 auto; border: 2px solid #000; background: white;">
+            <div class="receipt-container" style="max-width: 800px; margin: 0 auto; border: 1px solid #000; background: white; font-family: Arial, sans-serif; color: #000; padding: 0;">
                 
-                <!-- HEADER ESTILO IMAGEN 1 -->
-                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px; padding: 20px; border-bottom: 2px solid #000;">
-                    
-                    <!-- Columna Izquierda: Datos de la Empresa -->
-                    <div>
-                        <p style="margin: 0; font-size: 11px; font-weight: 700; color: #000;">NOTICIERO CONTABLE</p>
-                        <p style="margin: 0; font-size: 11px; font-weight: 700; color: #000;">NOTICIERO DEL CONTADOR E.I.R.L.</p>
-                        <p style="margin: 2px 0; font-size: 9px; color: #333;">${DIRECCION_EMPRESA}</p>
+                <div style="display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #000;">
+                    <div style="width: 60%;">
+                        <img src="assets/logo-verde.png" alt="Logo" style="height: 60px; margin-bottom: 10px;">
+                        <h3 style="margin: 0; font-size: 16px; font-weight: bold;">${RAZON_SOCIAL_EMPRESA}</h3>
+                        <p style="margin: 2px 0; font-size: 11px;">${DIRECCION_EMPRESA}</p>
+                        <p style="margin: 2px 0; font-size: 11px;">LIMA - PERÚ</p>
                     </div>
                     
-                    <!-- Columna Derecha: RUC y Tipo de Comprobante -->
-                    <div style="border: 2px solid #000; padding: 10px; text-align: center;">
-                        <p style="margin: 0; font-size: 10px; font-weight: 700;">RUC: ${RUC_EMPRESA}</p>
-                        <p style="margin: 5px 0 0 0; font-size: 14px; font-weight: 700; color: #000;">FACTURA ELECTRÓNICA</p>
-                        <p style="margin: 2px 0 0 0; font-size: 11px; font-weight: 600;">${serieComprobante}-${correlativo.toString().padStart(8, '0')}</p>
+                    <div style="width: 35%; border: 2px solid #000; text-align: center; padding: 10px 0;">
+                        <p style="margin: 5px 0; font-size: 14px; font-weight: bold;">R.U.C.: ${RUC_EMPRESA}</p>
+                        <p style="margin: 5px 0; font-size: 14px; font-weight: bold; background-color: #f0f0f0; padding: 5px 0;">${tipoComprobante}</p>
+                        <p style="margin: 5px 0; font-size: 14px;">${serieComprobante} - ${correlativo.toString().padStart(8, '0')}</p>
                     </div>
                 </div>
 
-                <!-- SECCIÓN: Fecha de Vencimiento y Forma de Pago -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; padding: 10px 20px; border-bottom: 1px solid #ccc; font-size: 10px;">
-                    <div>
-                        <span style="font-weight: 600;">Fecha de Vencimiento:</span>
-                        <span style="margin-left: 10px;">${paymentDate}</span>
+                <div style="padding: 10px 15px; font-size: 11px; line-height: 1.6;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <div style="width: 65%;">
+                            <table style="width: 100%; border: none;">
+                                <tr><td style="font-weight: bold;">Fecha de Emisión</td><td>: ${paymentDate}</td></tr>
+                                <tr><td style="font-weight: bold;">Señor(es)</td><td>: ${loan.nombres}</td></tr>
+                                <tr><td style="font-weight: bold;">RUC</td><td>: ${loan.dni}</td></tr>
+                                <tr><td style="font-weight: bold;">Dirección del Cliente</td><td>: -</td></tr>
+                                <tr><td style="font-weight: bold;">Tipo de Moneda</td><td>: SOLES</td></tr>
+                            </table>
+                        </div>
+                        <div style="width: 30%; text-align: right;">
+                             <div style="border: 1px solid #000; padding: 3px; display: inline-block; font-size: 10px;">Forma de pago: ${paymentMethod}</div>
+                        </div>
                     </div>
-                    <div>
-                        <span style="font-weight: 600;">Forma de pago:</span>
-                        <span style="margin-left: 10px;">${paymentMethod}</span>
+                    <div style="margin-top: 5px;">
+                        <span style="font-weight: bold;">Observación:</span> ${moraPagada > 0 ? 'INCLUYE MORA POR ATRASO' : 'PAGO DE CUOTA REGULAR'}
                     </div>
                 </div>
 
-                <!-- SECCIÓN: Señor(es) -->
-                <div style="padding: 10px 20px; border-bottom: 1px solid #ccc; font-size: 10px;">
-                    <span style="font-weight: 600;">Señor(es):</span>
-                    <span style="margin-left: 10px;">${RAZON_SOCIAL_EMPRESA}</span>
-                </div>
-
-                <!-- SECCIÓN: RUC del Cliente -->
-                <div style="padding: 10px 20px; border-bottom: 1px solid #ccc; font-size: 10px;">
-                    <span style="font-weight: 600;">RUC:</span>
-                    <span style="margin-left: 10px;">${loan.dni}</span>
-                </div>
-
-                <!-- SECCIÓN: Dirección del Receptor -->
-                <div style="padding: 10px 20px; border-bottom: 1px solid #ccc; font-size: 10px;">
-                    <span style="font-weight: 600;">Dirección del Receptor de la factura:</span>
-                </div>
-
-                <!-- SECCIÓN: Tipo de Moneda -->
-                <div style="padding: 10px 20px; border-bottom: 1px solid #ccc; font-size: 10px;">
-                    <span style="font-weight: 600;">Tipo de Moneda:</span>
-                    <span style="margin-left: 10px;">SOLES</span>
-                </div>
-
-                <!-- SECCIÓN: Observación -->
-                <div style="padding: 10px 20px; border-bottom: 1px solid #ccc; font-size: 10px;">
-                    <span style="font-weight: 600;">Observación:</span>
-                </div>
-
-                <!-- TABLA DE DETALLES -->
-                <div style="padding: 15px 20px;">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                <div style="margin-top: 10px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
                         <thead>
-                            <tr style="background: #f0f0f0; border: 1px solid #000;">
-                                <th style="border: 1px solid #000; padding: 6px; text-align: center;">Cantidad</th>
-                                <th style="border: 1px solid #000; padding: 6px; text-align: center;">Unidad Medida</th>
-                                <th style="border: 1px solid #000; padding: 6px; text-align: left;">Código</th>
-                                <th style="border: 1px solid #000; padding: 6px; text-align: left;">Descripción</th>
-                                <th style="border: 1px solid #000; padding: 6px; text-align: right;">Valor Unitario</th>
-                                <th style="border: 1px solid #000; padding: 6px; text-align: right;">IGV/IPM</th>
+                            <tr style="border-top: 1px solid #000; border-bottom: 1px solid #000;">
+                                <th style="padding: 5px; text-align: center;">Cantidad</th>
+                                <th style="padding: 5px; text-align: center;">Unidad Medida</th>
+                                <th style="padding: 5px; text-align: left;">Código</th>
+                                <th style="padding: 5px; text-align: left;">Descripción</th>
+                                <th style="padding: 5px; text-align: right;">Valor Unitario</th>
+                                <th style="padding: 5px; text-align: right;">Total</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td style="border: 1px solid #000; padding: 6px; text-align: center;">1.00</td>
-                                <td style="border: 1px solid #000; padding: 6px; text-align: center;">UNIDAD</td>
-                                <td style="border: 1px solid #000; padding: 6px;">0041</td>
-                                <td style="border: 1px solid #000; padding: 6px;">CONTAB1. SERVICIO DE CONTABILIDAD MES SETIEMBRE DAD</td>
-                                <td style="border: 1px solid #000; padding: 6px; text-align: right;">${capitalInteresPagado.toFixed(2)}</td>
-                                <td style="border: 1px solid #000; padding: 6px; text-align: right;">0.00</td>
+                                <td style="padding: 5px; text-align: center;">1.00</td>
+                                <td style="padding: 5px; text-align: center;">UNIDAD</td>
+                                <td style="padding: 5px;">SERV01</td>
+                                <td style="padding: 5px;">CUOTA PRÉSTAMO Y/O INTERESES</td>
+                                <td style="padding: 5px; text-align: right;">${capitalInteresPagado.toFixed(2)}</td>
+                                <td style="padding: 5px; text-align: right;">${capitalInteresPagado.toFixed(2)}</td>
                             </tr>
                             ${moraPagada > 0 ? `
                             <tr>
-                                <td style="border: 1px solid #000; padding: 6px; text-align: center;">1.00</td>
-                                <td style="border: 1px solid #000; padding: 6px; text-align: center;">UNIDAD</td>
-                                <td style="border: 1px solid #000; padding: 6px;">MORA</td>
-                                <td style="border: 1px solid #000; padding: 6px;">Mora por Atraso</td>
-                                <td style="border: 1px solid #000; padding: 6px; text-align: right;">${moraPagada.toFixed(2)}</td>
-                                <td style="border: 1px solid #000; padding: 6px; text-align: right;">0.00</td>
+                                <td style="padding: 5px; text-align: center;">1.00</td>
+                                <td style="padding: 5px; text-align: center;">UNIDAD</td>
+                                <td style="padding: 5px;">MORA</td>
+                                <td style="padding: 5px;">PENALIDAD POR ATRASO</td>
+                                <td style="padding: 5px; text-align: right;">${moraPagada.toFixed(2)}</td>
+                                <td style="padding: 5px; text-align: right;">${moraPagada.toFixed(2)}</td>
                             </tr>` : ''}
                         </tbody>
                     </table>
                 </div>
 
-                <!-- RESUMEN DE TOTALES (Derecha) -->
-                <div style="display: flex; justify-content: flex-end; padding: 0 20px 15px 0;">
-                    <div style="width: 300px;">
-                        <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 10px; border-bottom: 1px solid #ccc;">
-                            <span>Sub Total Ventas</span>
-                            <span>S/ ${capitalInteresPagado.toFixed(2)}</span>
+                <div style="border-top: 1px solid #000; display: flex; font-size: 11px;">
+                    <div style="width: 60%; padding: 10px;">
+                        <p style="margin: 5px 0;"><strong>Valor de Venta de Operaciones Gratuitas : S/ 0.00</strong></p>
+                        <p style="margin: 15px 0; font-weight: bold;">SON: ${numeroALetras(totalPagado)} SOLES</p>
+                        
+                        <div style="border: 1px solid #000; padding: 5px; margin-top: 10px;">
+                            <p style="margin: 2px 0;"><strong>Información del crédito</strong></p>
+                            <p style="margin: 2px 0;">Monto neto pendiente de pago : S/ 0.00 (Cancelado)</p>
+                            <p style="margin: 2px 0;">Total de Cuotas : 1</p>
                         </div>
-                        <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 10px; border-bottom: 1px solid #ccc;">
-                            <span>Descuentos</span>
-                            <span>S/ 0.00</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 10px; border-bottom: 1px solid #ccc;">
-                            <span>Valor Venta</span>
-                            <span>S/ ${capitalInteresPagado.toFixed(2)}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 10px; border-bottom: 1px solid #ccc;">
-                            <span>ISC</span>
-                            <span>S/ 0.00</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 10px; border-bottom: 1px solid #ccc;">
-                            <span>IGV</span>
-                            <span>S/ 0.00</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 10px; border-bottom: 1px solid #ccc;">
-                            <span>Otros Cargos</span>
-                            <span>S/ 0.00</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 10px; border-bottom: 1px solid #ccc;">
-                            <span>Otros Tributos</span>
-                            <span>S/ 0.00</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 10px; border-bottom: 1px solid #ccc;">
-                            <span>Monto de redondeo</span>
-                            <span>S/ 0.00</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 12px; font-weight: 700; border-top: 2px solid #000;">
-                            <span>Importe Total</span>
-                            <span>S/ ${totalPagado.toFixed(2)}</span>
-                        </div>
+                    </div>
+
+                    <div style="width: 40%; border-left: 1px solid #000;">
+                         <table style="width: 100%; border-collapse: collapse;">
+                            <tr><td style="padding: 3px 10px; text-align: right;">Sub Total Ventas :</td><td style="padding: 3px 10px; text-align: right;">S/ ${totalPagado.toFixed(2)}</td></tr>
+                            <tr><td style="padding: 3px 10px; text-align: right;">Anticipos :</td><td style="padding: 3px 10px; text-align: right;">S/ 0.00</td></tr>
+                            <tr><td style="padding: 3px 10px; text-align: right;">Descuentos :</td><td style="padding: 3px 10px; text-align: right;">S/ 0.00</td></tr>
+                            <tr><td style="padding: 3px 10px; text-align: right;">Valor Venta :</td><td style="padding: 3px 10px; text-align: right;">S/ ${totalPagado.toFixed(2)}</td></tr>
+                            <tr><td style="padding: 3px 10px; text-align: right;">IGV (18%) :</td><td style="padding: 3px 10px; text-align: right;">S/ 0.00</td></tr> <tr><td style="padding: 3px 10px; text-align: right; border-top: 1px solid #000; font-weight: bold;">Importe Total :</td><td style="padding: 3px 10px; text-align: right; border-top: 1px solid #000; font-weight: bold;">S/ ${totalPagado.toFixed(2)}</td></tr>
+                         </table>
                     </div>
                 </div>
-
-                <!-- FOOTER: Información del Crédito y QR -->
-                <div style="padding: 15px 20px; border-top: 1px solid #ccc; display: grid; grid-template-columns: 1fr auto; gap: 15px; align-items: start;">
-                    
-                    <div style="font-size: 9px;">
-                        <p style="margin: 0;"><strong>SON:</strong> ${numeroALetras(totalPagado)} SOLES</p>
-                        <p style="margin: 5px 0 0 0;"><strong>Total pago pendiente de pago:</strong> S/ ${totalPagado.toFixed(2)}</p>
-                        <p style="margin: 5px 0 0 0;"><strong>Total de Cuotas:</strong> 1</p>
-                        <p style="margin: 10px 0 5px 0; font-style: italic; color: #666;">Esta es una representación impresa de la Factura Electrónica, generada en el Sistema de SUNAT. Puede verificarla utilizando su clave SOL.</p>
-                    </div>
-
-                    <div style="text-align: center; border: 1px solid #000; padding: 5px;">
-                        <img src="${qrDataUrl}" alt="QR" style="width: 80px; height: 80px;">
-                    </div>
                 </div>
-
             </div>
         `;
-
-    } else {
-        // ===== FORMATO DE BOLETA (Imagen 2) =====
+    } 
+    // =========================================================
+    // DISEÑO 2: BOLETA (Estilo "Hydra/Ticket" - Estrecho y Largo)
+    // =========================================================
+    else {
         receiptContent.innerHTML = `
-            <div class="receipt-container" style="max-width: 350px; margin: 0 auto; border: 2px solid #000; background: white; font-family: 'Courier New', monospace;">
+            <div class="receipt-container" style="width: 380px; margin: 0 auto; background: white; font-family: 'Courier New', Courier, monospace; color: #000; padding: 15px; border: 1px solid #ccc;">
                 
-                <!-- HEADER: Logo y Empresa -->
-                <div style="text-align: center; padding: 15px 10px; border-bottom: 2px dashed #000;">
-                    <img src="assets/logo-verde.png" alt="Logo" style="height: 50px; margin-bottom: 8px;">
-                    <p style="margin: 0; font-size: 11px; font-weight: 700;">DEMOMIFACT</p>
-                    <p style="margin: 0; font-size: 10px; font-weight: 700;">EMPRESA DEMO SAC</p>
-                    <p style="margin: 2px 0; font-size: 9px;">RUC: ${RUC_EMPRESA}</p>
-                    <p style="margin: 2px 0; font-size: 9px;">${DIRECCION_EMPRESA}</p>
-                    <p style="margin: 2px 0; font-size: 9px;">Teléf: 987 654 321</p>
-                    <p style="margin: 2px 0; font-size: 9px;">Correo: Administrador@facturas.net</p>
-                    <p style="margin: 2px 0; font-size: 9px;">Web: www.facturas.net</p>
+                <div style="text-align: center; margin-bottom: 10px; background: #000; padding: 10px;">
+                    <img src="assets/logo-verde.png" alt="Logo" style="height: 50px;">
                 </div>
 
-                <!-- TÍTULO DEL COMPROBANTE -->
-                <div style="text-align: center; padding: 10px; border-bottom: 2px dashed #000;">
-                    <p style="margin: 0; font-size: 12px; font-weight: 700;">BOLETA DE VENTA ELECTRÓNICA</p>
-                    <p style="margin: 3px 0 0 0; font-size: 11px; font-weight: 600;">${serieComprobante} - ${correlativo.toString().padStart(8, '0')}</p>
+                <div style="text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 15px;">
+                    <div style="font-size: 16px;">${RAZON_SOCIAL_EMPRESA}</div>
+                    <div>RUC: ${RUC_EMPRESA}</div>
+                    <div style="font-size: 12px; font-weight: normal;">${DIRECCION_EMPRESA}</div>
+                    <div style="font-size: 12px; font-weight: normal;">Telf: 987 654 321</div>
+                    <div style="font-size: 12px; font-weight: normal;">Web: www.prestapro.com</div>
                 </div>
 
-                <!-- DATOS DEL CLIENTE -->
-                <div style="padding: 10px; font-size: 9px; border-bottom: 2px dashed #000;">
-                    <p style="margin: 0;"><strong>${loan.nombres} ${loan.apellidos}</strong></p>
-                    <p style="margin: 2px 0 0 0;">DNI: ${loan.dni}</p>
-                    <p style="margin: 8px 0 2px 0;">FECHA: ${paymentDate} HORA: ${new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                <div style="text-align: center; font-weight: bold; margin-bottom: 15px;">
+                    <div style="font-size: 15px;">BOLETA DE VENTA ELECTRÓNICA</div>
+                    <div style="font-size: 16px;">${serieComprobante} - ${correlativo.toString().padStart(8, '0')}</div>
                 </div>
 
-                <!-- TABLA DE DETALLES -->
-                <div style="padding: 10px; font-size: 9px;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr>
-                                <th style="text-align: left; padding: 3px 0; border-bottom: 1px solid #000;">Cant</th>
-                                <th style="text-align: left; padding: 3px 0; border-bottom: 1px solid #000;">U.M</th>
-                                <th style="text-align: left; padding: 3px 0; border-bottom: 1px solid #000;">COD</th>
-                                <th style="text-align: right; padding: 3px 0; border-bottom: 1px solid #000;">PRECIO</th>
-                                <th style="text-align: right; padding: 3px 0; border-bottom: 1px solid #000;">TOTAL</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td style="padding: 5px 0;">1</td>
-                                <td>UNIDAD</td>
-                                <td>981000705004</td>
-                                <td style="text-align: right;">${capitalInteresPagado.toFixed(2)}</td>
-                                <td style="text-align: right;">${capitalInteresPagado.toFixed(2)}</td>
-                            </tr>
-                            <tr>
-                                <td colspan="5" style="padding: 0 0 5px 0;">POLO BASICO TALLA SMALL</td>
-                            </tr>
-                            ${moraPagada > 0 ? `
-                            <tr>
-                                <td style="padding: 5px 0 0 0;">1</td>
-                                <td>UNIDAD</td>
-                                <td>MORA</td>
-                                <td style="text-align: right;">${moraPagada.toFixed(2)}</td>
-                                <td style="text-align: right;">${moraPagada.toFixed(2)}</td>
-                            </tr>
-                            <tr>
-                                <td colspan="5" style="padding: 0 0 5px 0;">Mora por Atraso</td>
-                            </tr>` : ''}
-                        </tbody>
-                    </table>
+                <div style="text-align: center; margin-bottom: 10px; font-size: 13px;">
+                    <div style="text-transform: uppercase;">${loan.nombres} ${loan.apellidos}</div>
+                    <div>---</div>
+                    <div style="font-weight: bold;">DNI ${loan.dni}</div>
                 </div>
 
-                <!-- TOTALES -->
-                <div style="padding: 10px; font-size: 10px; border-top: 2px dashed #000; border-bottom: 2px dashed #000;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <div style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 5px 0; margin-bottom: 10px; font-size: 12px; display: flex; justify-content: space-between;">
+                    <span>FECHA: ${paymentDate}</span>
+                    <span>HORA: ${horaSimulada}</span>
+                </div>
+
+                <table style="width: 100%; font-size: 12px; margin-bottom: 10px; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; border-bottom: 1px solid #000;">Cant</th>
+                            <th style="text-align: left; border-bottom: 1px solid #000;">U.M</th>
+                            <th style="text-align: left; border-bottom: 1px solid #000;">COD</th>
+                            <th style="text-align: right; border-bottom: 1px solid #000;">TOTAL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding-top: 5px;">1</td>
+                            <td style="padding-top: 5px;">UNID</td>
+                            <td style="padding-top: 5px;">SERV</td>
+                            <td style="text-align: right; padding-top: 5px;">${capitalInteresPagado.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="4" style="font-size: 11px;">CUOTA DE PRÉSTAMO</td>
+                        </tr>
+                        ${moraPagada > 0 ? `
+                        <tr>
+                            <td style="padding-top: 5px;">1</td>
+                            <td style="padding-top: 5px;">UNID</td>
+                            <td style="padding-top: 5px;">MORA</td>
+                            <td style="text-align: right; padding-top: 5px;">${moraPagada.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="4" style="font-size: 11px;">PENALIDAD POR ATRASO</td>
+                        </tr>` : ''}
+                    </tbody>
+                </table>
+
+                <div style="border-top: 1px solid #000; padding-top: 5px; font-size: 13px; font-weight: bold;">
+                    <div style="display: flex; justify-content: space-between;">
                         <span>TOTAL GRAVADO</span>
-                        <span>(S/) ${capitalInteresPagado.toFixed(2)}</span>
+                        <span>(S/) ${totalPagado.toFixed(2)}</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                    <div style="display: flex; justify-content: space-between;">
                         <span>I.G.V</span>
                         <span>(S/) 0.00</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 11px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 18px; margin-top: 5px;">
                         <span>TOTAL</span>
                         <span>(S/) ${totalPagado.toFixed(2)}</span>
                     </div>
                 </div>
 
-                <!-- FORMA DE PAGO Y OBSERVACIONES -->
-                <div style="padding: 10px; font-size: 9px; border-bottom: 2px dashed #000;">
-                    <p style="margin: 0;"><strong>FORMA DE PAGO:</strong> ${paymentMethod}</p>
-                    <p style="margin: 3px 0 0 0;"><strong>COND.VENTA:</strong> CONTADO</p>
-                    <p style="margin: 8px 0 0 0;"><strong>Observaciones:</strong></p>
-                    <p style="margin: 2px 0 0 0;">OPERANTE CON 00/100 SOLES</p>
+                <div style="margin-top: 10px; font-size: 12px; border-bottom: 1px dashed #000; padding-bottom: 10px;">
+                    SON: ${numeroALetras(totalPagado)} SOLES
                 </div>
 
-                <!-- QR CODE -->
-                <div style="text-align: center; padding: 10px;">
-                    <img src="${qrDataUrl}" alt="QR" style="width: 100px; height: 100px; border: 1px solid #000;">
+                <div style="margin-top: 10px; font-size: 12px;">
+                    <div><strong>FORMA DE PAGO:</strong> ${paymentMethod.toUpperCase()}</div>
+                    <div><strong>COND.VENTA:</strong> CONTADO</div>
+                    <div style="margin-top: 5px;"><strong>Observaciones:</strong></div>
+                    <div>OPERACIÓN REGISTRADA</div>
                 </div>
 
-                <!-- FOOTER -->
-                <div style="text-align: center; padding: 10px; font-size: 8px; border-top: 2px dashed #000;">
-                    <p style="margin: 0;">Representación Impresa de la BOLETA DE</p>
-                    <p style="margin: 0;">VENTA ELECTRÓNICA</p>
-                    <p style="margin: 5px 0 0 0;">Puede consultar en: WWW.MIFACT.NET</p>
-                    <p style="margin: 0;">Autorizado mediante Resolución 034-005-0007134</p>
-                    <p style="margin: 5px 0 0 0;"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAB8SURBVDhPY/hPAAxUAExQGgYmTZr0H0gTBUBpGIDqhfP///+H0iQBqF4YgOol3Uaoa4kGUL1wANVLuo2Ux9HQoYOJ1YsEUL2k20h5HA0dOpgEvUgA1Uu6jZTH0dChg4nQiwRQvaTbSHkcDR06mFi9SADVCwNQvf8B5rAwCDD8BwBgWmAYu3XB3wAAAABJRU5ErkJggg==" alt="Mifact" style="height: 14px;"></p>
+                <div style="text-align: center; margin-top: 15px;">
+                    <img src="${qrDataUrl}" alt="QR" style="width: 100px; height: 100px;">
+                </div>
+
+                <div style="text-align: center; font-size: 10px; margin-top: 10px; color: #555;">
+                    <p style="margin: 0;">Representación Impresa de la BOLETA DE VENTA ELECTRÓNICA</p>
+                    <p style="margin: 2px 0;">Autorizado mediante Resolución 034-005</p>
+                    <p style="margin-top: 5px; font-weight: bold;">PrestaPro System</p>
                 </div>
 
             </div>

@@ -959,7 +959,7 @@ function initLoanFormLogic() {
             <div class="form-row">
                 <div class="form-group">
                     <label for="monto">Monto del Préstamo (S/)</label>
-                    <input type="number" id="monto" required step="0.01" min="100" placeholder="5000">
+                    <input type="number" id="monto" required step="0.01" min="1" placeholder="5000">
                 </div>
                 <div class="form-group">
                     <label for="fecha">Fecha de Desembolso</label>
@@ -1404,7 +1404,7 @@ function openPaymentModal(loan) {
     paymentDateInput.value = getTodayDateISO(); // Usa la función auxiliar
 
     paymentAmountInput.value = remainingCapitalInterest.toFixed(2);
-    paymentAmountInput.min = remainingCapitalInterest > 0 ? '0.01' : '0.00';
+    paymentAmountInput.min = remainingCapitalInterest > 0 ? '1.00' : '0.00';
     paymentAmountInput.max = remainingCapitalInterest.toFixed(2);
     paymentAmountHint.textContent = `Monto máximo a pagar (Capital/Interés): S/ ${remainingCapitalInterest.toFixed(2)}`;
 
@@ -2330,8 +2330,7 @@ function generateQrDataURL(text, size) {
     return '';
 }
 
-// --- REEMPLAZA TODA LA FUNCIÓN showReceipt POR ESTA ---
-
+// --- REEMPLAZA TODA LA FUNCIÓN showReceipt POR ESTA (VERSIÓN SIN VENCIMIENTOS) ---
 function showReceipt(payment, loan) {
     if (!payment || !loan) {
         alert('No se pudieron obtener los datos completos del pago para generar el recibo.');
@@ -2345,25 +2344,28 @@ function showReceipt(payment, loan) {
     const capitalInteresPagado = totalPagado - moraPagada;
     const paymentMethod = payment.payment_method || 'Efectivo';
 
-    // Correlativo y Transaction ID
+    // Generar Correlativo y Transaction ID
     const transactionId = payment.transaction_id || `TRX-${Math.floor(Math.random() * 90000000) + 10000000}`;
     const correlativo = payment.correlativo_boleta || (Math.floor(Math.random() * 999999) + 1);
 
-    const paymentDate = new Date(payment.payment_date).toLocaleDateString('es-PE', { timeZone: 'UTC' });
-    // Hora simulada ya que la fecha viene sin hora del input date
+    // 1. OBTENER FECHA DE PAGO (EMISIÓN)
+    // Usamos split para asegurar que la fecha se lea correctamente sin errores de zona horaria
+    const partsPago = payment.payment_date.split('-'); 
+    const pDateLocal = new Date(partsPago[0], partsPago[1] - 1, partsPago[2]); 
+    const paymentDateStr = pDateLocal.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const horaSimulada = new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: true });
 
     // Determinar si es FACTURA (RUC 11 dígitos) o BOLETA
     const esFactura = loan.dni && loan.dni.length === 11;
     const tipoComprobante = esFactura ? 'FACTURA ELECTRÓNICA' : 'BOLETA DE VENTA ELECTRÓNICA';
-    const serieComprobante = esFactura ? 'E001' : 'B002'; // Series usadas en tus ejemplos
+    const serieComprobante = esFactura ? 'E001' : 'B002';
 
-    // Generar QR (Simulación)
-    const qrText = `|${RUC_EMPRESA}|${esFactura ? '01' : '03'}|${serieComprobante}|${correlativo}|${totalPagado.toFixed(2)}|${paymentDate}|${loan.dni}|`;
+    // Generar QR
+    const qrText = `|${RUC_EMPRESA}|${esFactura ? '01' : '03'}|${serieComprobante}|${correlativo}|${totalPagado.toFixed(2)}|${paymentDateStr}|${loan.dni}|`;
     const qrDataUrl = generateQrDataURL(qrText, 100);
 
     // =========================================================
-    // DISEÑO 1: FACTURA (Estilo "Noticiero Contable" - Ancho completo)
+    // DISEÑO 1: FACTURA (SIN VENCIMIENTO Y SIN TEXTO SUNAT)
     // =========================================================
     if (esFactura) {
         receiptContent.innerHTML = `
@@ -2388,19 +2390,18 @@ function showReceipt(payment, loan) {
                     <div style="display: flex; justify-content: space-between;">
                         <div style="width: 65%;">
                             <table style="width: 100%; border: none;">
-                                <tr><td style="font-weight: bold;">Fecha de Emisión</td><td>: ${paymentDate}</td></tr>
+                                <tr>
+                                    <td style="font-weight: bold; width: 140px;">Fecha de Emisión</td>
+                                    <td>: ${paymentDateStr}</td>
+                                </tr>
                                 <tr><td style="font-weight: bold;">Señor(es)</td><td>: ${loan.nombres}</td></tr>
                                 <tr><td style="font-weight: bold;">RUC</td><td>: ${loan.dni}</td></tr>
-                                <tr><td style="font-weight: bold;">Dirección del Cliente</td><td>: -</td></tr>
                                 <tr><td style="font-weight: bold;">Tipo de Moneda</td><td>: SOLES</td></tr>
                             </table>
                         </div>
                         <div style="width: 30%; text-align: right;">
                              <div style="border: 1px solid #000; padding: 3px; display: inline-block; font-size: 10px;">Forma de pago: ${paymentMethod}</div>
                         </div>
-                    </div>
-                    <div style="margin-top: 5px;">
-                        <span style="font-weight: bold;">Observación:</span> ${moraPagada > 0 ? 'INCLUYE MORA POR ATRASO' : 'PAGO DE CUOTA REGULAR'}
                     </div>
                 </div>
 
@@ -2446,26 +2447,23 @@ function showReceipt(payment, loan) {
                         <div style="border: 1px solid #000; padding: 5px; margin-top: 10px;">
                             <p style="margin: 2px 0;"><strong>Información del crédito</strong></p>
                             <p style="margin: 2px 0;">Monto neto pendiente de pago : S/ 0.00 (Cancelado)</p>
-                            <p style="margin: 2px 0;">Total de Cuotas : 1</p>
                         </div>
                     </div>
 
                     <div style="width: 40%; border-left: 1px solid #000;">
                          <table style="width: 100%; border-collapse: collapse;">
                             <tr><td style="padding: 3px 10px; text-align: right;">Sub Total Ventas :</td><td style="padding: 3px 10px; text-align: right;">S/ ${totalPagado.toFixed(2)}</td></tr>
-                            <tr><td style="padding: 3px 10px; text-align: right;">Anticipos :</td><td style="padding: 3px 10px; text-align: right;">S/ 0.00</td></tr>
-                            <tr><td style="padding: 3px 10px; text-align: right;">Descuentos :</td><td style="padding: 3px 10px; text-align: right;">S/ 0.00</td></tr>
-                            <tr><td style="padding: 3px 10px; text-align: right;">Valor Venta :</td><td style="padding: 3px 10px; text-align: right;">S/ ${totalPagado.toFixed(2)}</td></tr>
-                            <tr><td style="padding: 3px 10px; text-align: right;">IGV (18%) :</td><td style="padding: 3px 10px; text-align: right;">S/ 0.00</td></tr> <tr><td style="padding: 3px 10px; text-align: right; border-top: 1px solid #000; font-weight: bold;">Importe Total :</td><td style="padding: 3px 10px; text-align: right; border-top: 1px solid #000; font-weight: bold;">S/ ${totalPagado.toFixed(2)}</td></tr>
+                            <tr><td style="padding: 3px 10px; text-align: right;">Op. Gravada :</td><td style="padding: 3px 10px; text-align: right;">S/ ${totalPagado.toFixed(2)}</td></tr>
+                            <tr><td style="padding: 3px 10px; text-align: right;">IGV (0%) :</td><td style="padding: 3px 10px; text-align: right;">S/ 0.00</td></tr> 
+                            <tr><td style="padding: 3px 10px; text-align: right; border-top: 1px solid #000; font-weight: bold;">Importe Total :</td><td style="padding: 3px 10px; text-align: right; border-top: 1px solid #000; font-weight: bold;">S/ ${totalPagado.toFixed(2)}</td></tr>
                          </table>
                     </div>
                 </div>
                 </div>
-            </div>
         `;
     } 
     // =========================================================
-    // DISEÑO 2: BOLETA (Estilo "Hydra/Ticket" - Estrecho y Largo)
+    // DISEÑO 2: BOLETA (SIN VENCIMIENTO)
     // =========================================================
     else {
         receiptContent.innerHTML = `
@@ -2479,8 +2477,6 @@ function showReceipt(payment, loan) {
                     <div style="font-size: 16px;">${RAZON_SOCIAL_EMPRESA}</div>
                     <div>RUC: ${RUC_EMPRESA}</div>
                     <div style="font-size: 12px; font-weight: normal;">${DIRECCION_EMPRESA}</div>
-                    <div style="font-size: 12px; font-weight: normal;">Telf: 987 654 321</div>
-                    <div style="font-size: 12px; font-weight: normal;">Web: www.prestapro.com</div>
                 </div>
 
                 <div style="text-align: center; font-weight: bold; margin-bottom: 15px;">
@@ -2495,15 +2491,13 @@ function showReceipt(payment, loan) {
                 </div>
 
                 <div style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 5px 0; margin-bottom: 10px; font-size: 12px; display: flex; justify-content: space-between;">
-                    <span>FECHA: ${paymentDate}</span>
+                    <span>FECHA: ${paymentDateStr}</span>
                     <span>HORA: ${horaSimulada}</span>
                 </div>
-
                 <table style="width: 100%; font-size: 12px; margin-bottom: 10px; border-collapse: collapse;">
                     <thead>
                         <tr>
                             <th style="text-align: left; border-bottom: 1px solid #000;">Cant</th>
-                            <th style="text-align: left; border-bottom: 1px solid #000;">U.M</th>
                             <th style="text-align: left; border-bottom: 1px solid #000;">COD</th>
                             <th style="text-align: right; border-bottom: 1px solid #000;">TOTAL</th>
                         </tr>
@@ -2511,29 +2505,27 @@ function showReceipt(payment, loan) {
                     <tbody>
                         <tr>
                             <td style="padding-top: 5px;">1</td>
-                            <td style="padding-top: 5px;">UNID</td>
                             <td style="padding-top: 5px;">SERV</td>
                             <td style="text-align: right; padding-top: 5px;">${capitalInteresPagado.toFixed(2)}</td>
                         </tr>
                         <tr>
-                            <td colspan="4" style="font-size: 11px;">CUOTA DE PRÉSTAMO</td>
+                            <td colspan="3" style="font-size: 11px;">CUOTA DE PRÉSTAMO</td>
                         </tr>
                         ${moraPagada > 0 ? `
                         <tr>
                             <td style="padding-top: 5px;">1</td>
-                            <td style="padding-top: 5px;">UNID</td>
                             <td style="padding-top: 5px;">MORA</td>
                             <td style="text-align: right; padding-top: 5px;">${moraPagada.toFixed(2)}</td>
                         </tr>
                         <tr>
-                            <td colspan="4" style="font-size: 11px;">PENALIDAD POR ATRASO</td>
+                            <td colspan="3" style="font-size: 11px;">PENALIDAD POR ATRASO</td>
                         </tr>` : ''}
                     </tbody>
                 </table>
 
                 <div style="border-top: 1px solid #000; padding-top: 5px; font-size: 13px; font-weight: bold;">
                     <div style="display: flex; justify-content: space-between;">
-                        <span>TOTAL GRAVADO</span>
+                        <span>OP. GRAVADA</span>
                         <span>(S/) ${totalPagado.toFixed(2)}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between;">
@@ -2551,10 +2543,7 @@ function showReceipt(payment, loan) {
                 </div>
 
                 <div style="margin-top: 10px; font-size: 12px;">
-                    <div><strong>FORMA DE PAGO:</strong> ${paymentMethod.toUpperCase()}</div>
-                    <div><strong>COND.VENTA:</strong> CONTADO</div>
-                    <div style="margin-top: 5px;"><strong>Observaciones:</strong></div>
-                    <div>OPERACIÓN REGISTRADA</div>
+                    <div><strong>FORMA PAGO:</strong> ${paymentMethod.toUpperCase()}</div>
                 </div>
 
                 <div style="text-align: center; margin-top: 15px;">
@@ -2563,7 +2552,6 @@ function showReceipt(payment, loan) {
 
                 <div style="text-align: center; font-size: 10px; margin-top: 10px; color: #555;">
                     <p style="margin: 0;">Representación Impresa de la BOLETA DE VENTA ELECTRÓNICA</p>
-                    <p style="margin: 2px 0;">Autorizado mediante Resolución 034-005</p>
                     <p style="margin-top: 5px; font-weight: bold;">PrestaPro System</p>
                 </div>
 
@@ -2572,7 +2560,7 @@ function showReceipt(payment, loan) {
     }
 
     openModal(getDomElement('receiptModal'));
-    currentReceiptData = { payment, loan, totalPagado, paymentMethod, capitalInteresPagado, moraPagada, transactionId, correlativo, paymentDate };
+    currentReceiptData = { payment, loan, totalPagado, paymentMethod, capitalInteresPagado, moraPagada, transactionId, correlativo, paymentDate: paymentDateStr };
 }
 
 function numeroALetras(num) {
